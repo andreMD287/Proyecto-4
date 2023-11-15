@@ -1,0 +1,67 @@
+Base: 0b00000011 ; Base (3)
+Exponente: 0b00000111 ; Exponente (7)
+Resultado: 0b1
+Contador: 0x8
+Uno: 0b1
+Cero: 0b0
+
+inicio:
+    mov ACC, Base        ; Cargar la base en el acumulador
+    mov A, Exponente     ; Mover el exponente a un registro auxiliar
+
+exponenciacionLoop:
+    rsh A, Uno           ; Desplazar a la derecha el exponente
+    jz finExponenciacion ; Si el exponente es cero, terminar
+
+    jc multiplicar       ; Si el bit menos significativo es 1, multiplicar
+
+multiplicar:
+    call BoothAlgorithm  ; Llamar al subprograma del algoritmo de Booth
+    jmp exponenciacionLoop  ; Volver al bucle de exponenciación
+
+finExponenciacion:
+    hlt
+
+BoothAlgorithm:
+    mov ACC, C         ; Inicializar el bit de acarreo en 0
+    mov DPTR, Resultado  ; Inicializar el puntero del resultado en memoria
+
+BoothLoop:
+    rsh ACC, Uno
+    mov ACC, A
+    add ACC, A            ; Duplicar el multiplicando (sin usar registro B)
+
+    jc BoothSubtract    ; Saltar si hay acarreo (se detectó un 1 en el bit más significativo)
+    jz BoothShift       ; Saltar si el resultado es cero (multiplicador es par)
+
+    mov DPTR, Resultado  ; Reiniciar el puntero del resultado en memoria
+    mov A, ACC            ; Guardar el multiplicando actual en A (sin usar registro B)
+    inv ACC               ; Invertir el multiplicando
+    mov ACC, Uno
+    add ACC, A           ; Sumar 1 al multiplicando invertido (complemento a dos)
+    mov [DPTR], ACC       ; Actualizar la posición de la memoria con el nuevo multiplicador
+
+BoothShift:
+    lsh A, Uno               ; Desplazar a la izquierda el multiplicador
+    add ACC, A         ; Sumar el bit al puntero de multiplicación
+    mov ACC, [DPTR]       ; Cargar el siguiente bit del multiplicador desde la memoria
+    mov A, ACC
+    mov ACC, Resultado
+    mov DPTR, ACC
+    mov ACC, [DPTR]
+    add ACC, A         ; Sumar el nuevo bit a la multiplicación
+
+BoothSubtract:
+    lsh A, Uno             ; Desplazar a la izquierda el multiplicador original (Q)
+    mov ACC, A
+    add ACC, A           ; Duplicar el multiplicador original
+    mov DPTR, Resultado  ; Reiniciar el puntero de la memoria
+    mov A, ACC            ; Guardar el multiplicador actual en A (sin usar registro B)
+    inv ACC               ; Invertir el multiplicador actual
+    mov ACC, Uno
+    add ACC, A           ; Sumar 1 al multiplicador invertido (complemento a dos)
+    mov [DPTR], ACC       ; Actualizar la posición de la memoria con el nuevo multiplicador
+
+    jz BoothLoop        ; Saltar al bucle si no se han procesado todos los bits del multiplicador
+
+    ret                 ; Retornar al punto de llamada
