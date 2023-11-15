@@ -1,0 +1,94 @@
+variableA: 0b0 
+Q: 0b00000011 ; Multiplicador (3)
+Q_1: 0b0
+M: 0b00000111 ; Multiplicando (7)
+count: 0x8
+U: 0b00000001
+C: 0b00000000
+siete: 0b00000111
+inicio:
+    	mov ACC, Q_1        ; Cargar el multiplicador en el acumulador
+	mov DPTR, ACC
+	mov ACC, [DPTR]
+    	call BoothAlgorithm ; Llamar al subprograma del algoritmo de Booth
+    	hlt
+
+BoothAlgorithm:
+    jz verificar
+	ret		
+verificar:
+	MOV A, ACC
+	MOV ACC, U
+	ADD ACC, A
+	MOV DPTR, variableA
+	MOV [DPTR], ACC
+	MOV ACC, Q
+	MOV DPTR, ACC
+	MOV ACC, [DPTR]
+	;AND ACC, A
+	JMP BoothShift
+	jz BoothAddition
+	jz BoothSubtract
+	ret
+bucle:
+	mov acc, variableA
+	mov dptr, acc
+	mov acc, [dptr]
+	lsh acc, u 
+	MOV A, ACC
+	inv acc
+   	 mov A, acc
+	mov acc, siete
+	add acc, a
+    
+    ; Comprueba si el contador es cero
+    JZ verificar
+    
+    ; Salta de nuevo al inicio del bucle si el contador no es cero
+    JMP bucle
+
+BoothShift:
+	mov ACC, variableA
+	mov DPTR, ACC
+	mov ACC, [DPTR]
+	RSH ACC, U
+	mov ACC, Q
+	mov DPTR, ACC
+	mov ACC, [DPTR]
+	RSH ACC, U
+	jc des
+des:
+	jz cambiar
+	ret
+cambiar:
+	mov ACC, Q_1        
+mov DPTR, ACC
+	mov ACC, [DPTR]
+	mov A, U
+	ADD ACC, A
+	ret
+BoothSubtract:
+    lsh A, U             ; Desplazar a la izquierda el multiplicador original (Q)
+    mov ACC, A
+    add ACC, A           ; Duplicar el multiplicador original
+    mov DPTR, M          ; Reiniciar el puntero de la memoria
+    mov A, ACC            ; Guardar el multiplicador actual en A (sin usar registro B)
+    inv ACC               ; Invertir el multiplicador actual
+    mov ACC, U
+    add ACC, A           ; Sumar 1 al multiplicador invertido (complemento a dos)
+    mov A, ACC
+    mov ACC, Q
+    add ACC, A           ; Sumar el complemento a dos al multiplicador original
+    mov [DPTR], ACC       ; Actualizar la posición de la memoria con el nuevo multiplicador
+
+    jz BoothShift       ; Saltar al bucle si no se han procesado todos los bits del multiplicador
+
+    ret                 ; Retornar al punto de llamada
+BoothAddition:
+	mov ACC, M
+	mov DPTR, ACC
+	mov ACC, [DPTR]
+	mov A, variableA
+	ADD ACC, A
+	mov [DPTR], ACC
+	jmp BoothShift
